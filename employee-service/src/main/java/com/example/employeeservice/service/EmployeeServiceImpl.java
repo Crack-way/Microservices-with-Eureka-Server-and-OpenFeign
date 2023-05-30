@@ -3,26 +3,43 @@ package com.example.employeeservice.service;
 import com.example.employeeservice.dto.AddressResponse;
 import com.example.employeeservice.dto.EmployeeResponse;
 import com.example.employeeservice.entity.Employee;
+import com.example.employeeservice.feignclient.AddressClient;
 import com.example.employeeservice.repo.EmployeeRepo;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.client.WebClient;
+
+
 
 @Service
 @RequiredArgsConstructor
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepo employeeRepo;
-    private final WebClient webClient;
+
+    private final AddressClient addressClient;
+
+    private final RestTemplate restTemplate;
+
+    private final LoadBalancerClient loadBalancerClient;
 
 
 
     public EmployeeResponse getEmployee(int id) {
         Employee employee = employeeRepo.findById(id).orElseThrow();
-        AddressResponse addressResponse=webClient.get().uri("/getAddress/"+id).retrieve().bodyToMono(AddressResponse.class).block();
+
         EmployeeResponse employeeResponse = toResponseDto(employee);
+
+        // manual way to get the  server instance information
+//        ServiceInstance serviceInstance=loadBalancerClient.choose("address-app");
+//        String uri=serviceInstance.getUri().toString();
+//        String contextRoot=serviceInstance.getMetadata().get("configPath");
+//        System.out.println(uri);
+        AddressResponse addressResponse= addressClient.getAddressByEmployeeId(id);
+
         employeeResponse.setAddressResponse(addressResponse);
         return employeeResponse;
     }
